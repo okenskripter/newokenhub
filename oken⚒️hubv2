@@ -1,0 +1,292 @@
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+
+local Window = Rayfield:CreateWindow({
+	Name = "🔨OKENHUB🔨(I added key for u bitch ass skidders)",
+	LoadingTitle = "Loading script",
+	LoadingSubtitle = "by Oken",
+	ConfigurationSaving = {
+		Enabled = false,
+		FolderName = nil, -- Create a custom folder for your hub/game
+		FileName = "okenscript#1"
+	},
+        Discord = {
+        	Enabled = true,
+        	Invite = "X6ECq8JV", -- The Discord invite code, do not include discord.gg/
+        	RememberJoins = false -- Set this to false to make them join the discord every time they load it up
+        },
+	KeySystem = true, -- Set this to true to use our key system
+	KeySettings = {
+		Title = "⚒️OKENHUB",
+		Subtitle = "Key System",
+		Note = "join the discord (discord.gg/X6ECq8JV)",
+		FileName = "OkenKey",
+		SaveKey = false,
+		GrabKeyFromSite = true, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
+		Key = "https://pastebin.com/raw/VxHvTw2H"
+	}
+})
+
+local MainTab = Window:CreateTab("👌exploits", nil) -- Title, Image
+local MainSection = MainTab:CreateSection("Main")
+
+Rayfield:Notify({
+    Title = "script executed🙉",
+    Content = "do u like my gui?🤔",
+    Duration = 4,
+    Image = nil,
+    Actions = { -- Notification Buttons
+        Ignore = {
+            Name = "nigga click the button",
+            Callback = function()
+                print("why the fuck are you checking here there is a notification in game retard")
+            end
+		},
+	},
+})
+
+local Button = MainTab:CreateButton({
+	Name = "🔫aimbot(b to toggle)",
+	Callback = function()
+        print("aimbot working")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local Replicated = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local player = LocalPlayer
+
+local CircleRadius = 400
+local Gravity = 50
+local BulletSpeed = 2200
+local TargetPlayer = nil
+local RightMouseButtonHeld = false
+
+local DebugLineEnabled = true
+local AimingEnabled = true -- Toggle for aiming
+
+-- Create a new circle drawing
+local Circle = Drawing.new("Circle")
+Circle.Visible = true
+Circle.Color = Color3.fromRGB(25, 100, 150)
+Circle.Thickness = 2
+Circle.NumSides = 50
+Circle.Radius = CircleRadius
+Circle.Filled = false
+Circle.Transparency = 0.5
+
+-- Create a single line for drawing
+local DebugLine = Drawing.new("Line")
+DebugLine.Color = Color3.fromRGB(8, 255, 8)
+DebugLine.Thickness = 1.37245732654235462357645276
+DebugLine.Transparency = 0.8
+DebugLine.Visible = false
+
+local PlayersList = {}
+
+-- Function to update the bullet speed based on the player's held item
+local function getHeldItem(player)
+    local target = player:FindFirstChild("CurrentSelectedObject")
+    if target and target.Value and target.Value.Value then
+        return target.Value.Value.Name
+    end
+    return nil
+end
+
+-- Function to retrieve the BulletSpeed of the weapon
+local function getBulletSpeed(player)
+    local heldItemName = getHeldItem(player)
+    local bulletSpeed = 2250
+
+    if heldItemName then
+        local gunData = Replicated:WaitForChild("GunData")
+        local weapon = gunData:FindFirstChild(heldItemName)
+
+        if weapon and weapon:FindFirstChild("Stats") and weapon.Stats:FindFirstChild("BulletSettings") then
+            local bulletSpeedObj = weapon.Stats.BulletSettings:FindFirstChild("BulletSpeed")
+            if bulletSpeedObj then
+                bulletSpeed = bulletSpeedObj.Value
+            end
+        end
+    end
+
+    return bulletSpeed
+end
+
+local function updateCirclePosition()
+    local screenSize = Camera.ViewportSize
+    local centerPosition = Vector2.new(screenSize.X / 2, screenSize.Y / 2)
+    Circle.Position = centerPosition
+end
+
+local function findNearestTargetToMouse()
+    local nearestTarget = nil
+    local shortestDistance = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if PlayersList[player.Name] and player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local rootPart = player.Character.HumanoidRootPart
+            local screenPoint = Camera:WorldToViewportPoint(rootPart.Position)
+            local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            local targetPos = Vector2.new(screenPoint.X, screenPoint.Y)
+            local distance = (targetPos - mousePos).Magnitude
+
+            if distance < CircleRadius and distance < shortestDistance then
+                shortestDistance = distance
+                nearestTarget = player
+            end
+        end
+    end
+
+    return nearestTarget
+end
+
+local function predictFuturePosition(targetPosition, targetVelocity, bulletSpeed, Gravity)
+    local distance = (targetPosition - Camera.CFrame.Position).Magnitude
+    local travelTime = distance / bulletSpeed
+    local futurePosition = targetVelocity * travelTime * 1.0321248721947219874921874918274982174912742918748921
+    futurePosition = futurePosition + targetPosition
+    local drop = Gravity * travelTime ^ 2 * 1.05163873239983983298325723598723589732589753298723759876987654987654984398574398754398753984759843759834759834798672628732626311111111111111111111111111
+    futurePosition = futurePosition + Vector3.new(0, drop, 0)
+
+    return futurePosition
+end
+
+local function aimAtTarget()
+    if not TargetPlayer or not TargetPlayer.Character then return end
+
+    local serverColliderHead = TargetPlayer.Character:FindFirstChild("ServerColliderHead")
+    
+    if serverColliderHead then
+        local targetPosition = serverColliderHead.Position
+        local targetVelocity = serverColliderHead.Velocity or Vector3.new(0, 0, 0)
+
+        local futurePosition = predictFuturePosition(targetPosition, targetVelocity, BulletSpeed, Gravity)
+        local screenPoint = Camera:WorldToViewportPoint(futurePosition)
+
+        local mouseX = Camera.ViewportSize.X / 2
+        local mouseY = Camera.ViewportSize.Y / 2
+
+        local deltaX = screenPoint.X - mouseX
+        local deltaY = screenPoint.Y - mouseY
+
+        mousemoverel(deltaX, deltaY)
+    end
+end
+
+local function updateDebugLine()
+    if not DebugLineEnabled then
+        DebugLine.Visible = false
+        return
+    end
+
+    local nearestTarget = findNearestTargetToMouse()
+
+    if nearestTarget and nearestTarget.Character then
+        local serverColliderHead = nearestTarget.Character:FindFirstChild("ServerColliderHead")
+        
+        if serverColliderHead then
+            local targetPosition = serverColliderHead.Position
+            local targetVelocity = serverColliderHead.Velocity or Vector3.new(0, 0, 0)
+
+            local futurePosition = predictFuturePosition(targetPosition, targetVelocity, BulletSpeed, Gravity)
+            local screenPoint = Camera:WorldToViewportPoint(futurePosition)
+
+            DebugLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            DebugLine.To = Vector2.new(screenPoint.X, screenPoint.Y)
+            DebugLine.Visible = true
+        else
+            DebugLine.Visible = false
+        end
+    else
+        DebugLine.Visible = false
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if not processed then
+        if input.KeyCode == Enum.KeyCode.B then
+            AimingEnabled = not AimingEnabled -- Toggle the aiming
+            print(AimingEnabled and "Aiming enabled" or "Aiming disabled")
+        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then
+            RightMouseButtonHeld = true
+        elseif input.KeyCode == Enum.KeyCode.L then
+            DebugLineEnabled = not DebugLineEnabled -- Toggle the debug line
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, processed)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightMouseButtonHeld = false
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    PlayersList[player.Name] = true
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    PlayersList[player.Name] = nil
+end)
+
+for _, player in pairs(Players:GetPlayers()) do
+    PlayersList[player.Name] = true
+end
+
+RunService.RenderStepped:Connect(function()
+    updateCirclePosition()
+
+    BulletSpeed = getBulletSpeed(player)
+
+    updateDebugLine()
+
+    if RightMouseButtonHeld and AimingEnabled then
+        TargetPlayer = findNearestTargetToMouse()
+        aimAtTarget()
+    end
+end)
+
+while true do
+    print(BulletSpeed)
+    wait(10)
+end
+	end,
+})
+
+local Button = Tab:CreateButton({
+	Name = "🥷ESP",
+	Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/DaniHRE/DinoVision/main/DinoVisionV1.lua", true))()
+	end,
+})
+
+local Slider = MainTab:CreateSlider({
+	Name = "🏃‍♂️💨💨💨speed",
+	Range = {0, 300},
+	Increment = 1,
+	Suffix = "🏃‍♂️💨💨💨",
+	CurrentValue = 16,
+	Flag = "Slider1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+	Callback = function(Value)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = (Value)
+	end,
+})
+local Keybind = MainTab:CreateKeybind({
+	Name = "🤔👁️inventory viewer",
+	CurrentKeybind = "J",
+	HoldToInteract = false,
+	Flag = "Keybind1", -- A flag is the identifier for the configuration file, make sure every element has a different flag if you're using configuration saving to ensure no overlaps
+	Callback = function(Keybind)
+        loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/135dafb0c84b7bfb126256e1e47fa782.lua"))()
+	end,
+})
+
+local Button = MainTab:CreateButton({
+	Name = "✈️fly",
+	Callback = function()
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
+	end,
+})
